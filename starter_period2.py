@@ -1,0 +1,123 @@
+"""
+PL202 - Day 1 (Period 2) Starter File
+Task: Cloud Log Cleaner + JSON Summary (Mini Project)
+
+You will:
+1) Read logs.txt
+2) Keep ONLY valid lines (4 parts AND level is INFO/WARN/ERROR)
+3) Write clean logs to clean_logs.txt (same original format)
+4) Create summary.json with:
+   - total_lines, valid_lines, invalid_lines
+   - levels: counts of INFO/WARN/ERROR (valid only)
+   - top_services: top 3 services by valid log count
+   - top_errors: top 3 ERROR messages by count (valid ERROR only)
+
+IMPORTANT:
+- Work independently (no teacher / classmates).
+- You may copy your solutions from Period 1.
+"""
+
+import json
+from pathlib import Path
+from collections import Counter
+
+LOG_FILE = Path("logs.txt")
+CLEAN_FILE = Path("clean_logs.txt")
+SUMMARY_FILE = Path("summary.json")
+
+ALLOWED_LEVELS = {"INFO", "WARN", "ERROR"}
+
+
+def parse_line(line: str):
+    """
+    Returns (timestamp, level, service, message) OR None if format invalid.
+    """
+    # TODO 1: Implement parse_line (same rules as Period 1)
+    line = line.strip()
+    if not line:
+        return None
+    
+    parts = [part.strip() for part in line.split("|")]
+    
+    if len(parts) != 4:
+        return None
+    
+    return tuple(parts)
+
+
+def normalize_level(level: str) -> str:
+    # TODO 2: return uppercase level
+    return level.upper()
+
+
+def main():
+    if not LOG_FILE.exists():
+        print(f"ERROR: Could not find {LOG_FILE}. Make sure logs.txt is in the same folder.")
+        return
+
+    total_lines = 0
+    valid_lines = 0
+    invalid_lines = 0
+
+    level_counts = {"INFO": 0, "WARN": 0, "ERROR": 0}
+
+    service_counter = Counter()
+    error_message_counter = Counter()
+
+    clean_lines = []  # store valid lines to write later
+
+    # TODO 3: Read logs.txt line by line
+    with LOG_FILE.open("r", encoding="utf-8") as file:
+        for line in file:
+            total_lines += 1
+
+            parsed = parse_line(line)
+            if parsed is None:
+                invalid_lines += 1
+                continue
+
+            timestamp, level, service, message = parsed
+            level = normalize_level(level)
+
+            if level not in ALLOWED_LEVELS:
+                invalid_lines += 1
+                continue
+
+            # If it's valid:
+            valid_lines += 1
+            level_counts[level] += 1
+            service_counter[service] += 1
+            if level == "ERROR":
+                error_message_counter[message] += 1
+
+            # Store the valid line in its original format (with uppercase level)
+            clean_lines.append(f"{timestamp} | {level} | {service} | {message}")
+
+    # TODO 4: Write clean_lines into clean_logs.txt (one per line)
+    with CLEAN_FILE.open("w", encoding="utf-8") as clean_file:
+        clean_file.write("\n".join(clean_lines))
+
+    # TODO 5: Build the summary dictionary with this exact structure:
+    top_services = [{"service": service, "count": count} for service, count in service_counter.most_common(3)]
+    top_errors = [{"message": message, "count": count} for message, count in error_message_counter.most_common(3)]
+
+    summary = {
+        "total_lines": total_lines,
+        "valid_lines": valid_lines,
+        "invalid_lines": invalid_lines,
+        "levels": level_counts,
+        "top_services": top_services,
+        "top_errors": top_errors
+    }
+
+    # TODO 6: Save summary.json using json.dump(..., indent=2)
+    with SUMMARY_FILE.open("w", encoding="utf-8") as summary_file:
+        json.dump(summary, summary_file, indent=2)
+
+    # Optional self-check prints (you can keep them):
+    print("Valid:", valid_lines, "Invalid:", invalid_lines)
+    print("Summary saved to", SUMMARY_FILE)
+
+
+if __name__ == "__main__":
+    main()
